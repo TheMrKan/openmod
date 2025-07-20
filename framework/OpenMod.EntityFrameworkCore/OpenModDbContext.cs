@@ -1,4 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Autofac;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using OpenMod.API;
 using OpenMod.API.Plugins;
 using OpenMod.EntityFrameworkCore.Configurator;
 using System;
@@ -10,16 +14,19 @@ namespace OpenMod.EntityFrameworkCore
     {
         internal readonly IServiceProvider ServiceProvider;
         private readonly IDbContextConfigurator? m_DbContextConfigurator;
+        private readonly IConfiguration? m_OpenModConfiguration;
 
         protected OpenModDbContext(IServiceProvider serviceProvider)
         {
             ServiceProvider = serviceProvider;
+            m_OpenModConfiguration = ServiceProvider.GetService<IOpenModHost>()?.LifetimeScope.Resolve<IConfiguration>();
         }
 
         protected OpenModDbContext(IDbContextConfigurator configurator, IServiceProvider serviceProvider)
         {
             m_DbContextConfigurator = configurator;
             ServiceProvider = serviceProvider;
+            m_OpenModConfiguration = ServiceProvider.GetService<IOpenModHost>()?.LifetimeScope.Resolve<IConfiguration>();
         }
         
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -67,8 +74,8 @@ namespace OpenMod.EntityFrameworkCore
         /// </summary>
         protected internal virtual string GetConnectionStringName()
         {
-            return typeof(TSelf).GetCustomAttribute<ConnectionStringAttribute>()?.Name ??
-                   ConnectionStrings.Default;
+            var defaultConnectionStringName = m_OpenModConfiguration?.GetValue("db:defaultConnectionStringName", ConnectionStrings.Default) ?? ConnectionStrings.Default;
+            return typeof(TSelf).GetCustomAttribute<ConnectionStringAttribute>()?.Name ?? defaultConnectionStringName;
         }
     }
 }
